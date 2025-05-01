@@ -14,7 +14,7 @@ export function Providers({ children }: ProvidersProps) {
     <ClerkProvider appearance={{ layout: { logoPlacement: "inside" }, baseTheme: dark }}>
       <ThemeProvider
         attribute="class"
-        defaultTheme="system"
+        defaultTheme="dark"
         enableSystem
         disableTransitionOnChange
       >
