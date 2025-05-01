@@ -6,6 +6,8 @@
     "dev": "turbo dev",
     "lint": "turbo lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "dev:web": "cd ./apps/web && npm run dev",
+    "dev:backend": "cd ./apps/backend && npm run dev",
     "start:web": "cd ./apps/web && npm run start",
     "start:backend": "cd ./apps/backend && npm run start",
     "generate:db": "cd ./packages/db && npx prisma generate && cd ../.."
