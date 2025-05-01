@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Filter, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -147,9 +147,9 @@ export default function TransactionsPage() {
                         Date & Time
                       </p>
                       <p className="font-medium">
-                        {format(new Date(transaction.createdAt), "MMM d, yyyy")}
+                        {format(parseISO(transaction.createdAt), "MMM d, yyyy")}
                         <span className="text-sm text-muted-foreground ml-2">
-                          {format(new Date(transaction.createdAt), "h:mm a")}
+                          {format(parseISO(transaction.createdAt), "h:mm a")}
                         </span>
                       </p>
                     </div>
@@ -165,7 +165,7 @@ export default function TransactionsPage() {
                       </p>
                       <p className="font-medium">
                         {format(
-                          new Date(transaction.updatedAt),
+                          parseISO(transaction.updatedAt),
                           "MMM d, h:mm a"
                         )}
                       </p>

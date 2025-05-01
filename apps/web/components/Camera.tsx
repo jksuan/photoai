@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "./ui/button";
 import { Download, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
+import { format, parseISO } from 'date-fns';
 
 export interface TImage {
   id: string;
@@ -32,13 +33,14 @@ export function Camera() {
   const { getToken } = useAuth();
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return format(parseISO(dateString), 'yyyy-MM-dd HH:mm:ss');
+    // return new Date(dateString).toLocaleString("en-US", {
+    //   year: "numeric",
+    //   month: "long",
+    //   day: "numeric",
+    //   hour: "2-digit",
+    //   minute: "2-digit",
+    // });
   };
 
   const fetchImages = async () => {

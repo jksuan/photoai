@@ -38,6 +38,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import JSZip from "jszip";
+import { format } from 'date-fns';
 
 interface UploadedFile {
   name: string;
@@ -235,6 +236,10 @@ export function Train() {
       setIsUploading(false);
       setUploadProgress(0);
     }
+  };
+
+  const formatTime = (date: Date) => {
+    return format(date, 'HH:mm:ss');
   };
 
   const isFormValid = name && zipUrl && type && age && ethinicity && eyeColor;
@@ -436,9 +441,10 @@ export function Train() {
                                 </div>
                                 <div className="flex items-center space-x-2">
                                   <span className="text-xs text-neutral-500">
-                                    {new Date(
+                                    {formatTime(file.timestamp)}
+                                    {/* {new Date(
                                       file.timestamp
-                                    ).toLocaleTimeString()}
+                                    ).toLocaleTimeString()} */}
                                   </span>
                                   <button
                                     onClick={() => handleRemoveFile(index)}

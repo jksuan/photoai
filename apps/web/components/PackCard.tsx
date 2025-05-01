@@ -20,6 +20,7 @@ import {
   CarouselPrevious,
 } from "./ui/carousel";
 import Autoplay from "embla-carousel-autoplay";
+import { format, parseISO } from 'date-fns';
 
 export interface TPack {
   id: string;
@@ -78,6 +79,11 @@ export function PackCard(props: TPack & { selectedModelId: string }) {
         },
       }
     );
+  };
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '';
+    return format(parseISO(dateString), 'yyyy-MM-dd');
   };
 
   return (
@@ -153,7 +159,8 @@ export function PackCard(props: TPack & { selectedModelId: string }) {
 
               {props.createdAt && (
                 <p className="text-xs text-muted-foreground">
-                  Added {new Date(props.createdAt).toLocaleDateString()}
+                  Added {formatDate(props.createdAt)}
+                  {/* Added {new Date(props.createdAt).toLocaleDateString()} */}
                 </p>
               )}
             </CardContent>
