@@ -16,7 +16,7 @@ export default function SubscriptionPage() {
     if (!isAuthenticated) return;
 
     setSelectedPlan(plan);
-    await handlePayment(plan, false, "razorpay");
+    await handlePayment(plan, false, "stripe");
     setSelectedPlan(null);
   };
 

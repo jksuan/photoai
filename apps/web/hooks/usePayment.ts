@@ -4,7 +4,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { BACKEND_URL } from "@/app/config";
-import { RazorpayResponse } from "@/types";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY!);
 const apiUrl = BACKEND_URL;
@@ -29,44 +28,26 @@ export function usePayment() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ plan, method: "razorpay" }),
+        body: JSON.stringify({ plan, method: p1 }), // 使用传入的支付方法
       });
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || "Payment failed");
 
-      await loadRazorpayScript();
+      const stripe = await stripePromise;
+      if (!stripe) throw new Error("Stripe initialization failed");
 
-      const options = {
-        key: data.key,
-        amount: String(data.amount),
-        currency: data.currency,
-        name: data.name,
-        description: data.description,
-        order_id: data.order_id,
-        handler: function (response: RazorpayResponse) {
-          // Redirect to verify page with all necessary parameters
-          const params = new URLSearchParams({
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_signature: response.razorpay_signature,
-            plan: plan,
-            amount: String(data.amount),
-          });
-          window.location.href = `/payment/verify?${params.toString()}`;
-        },
-        modal: {
-          ondismiss: function () {
-            window.location.href = "/payment/cancel";
-          },
-        },
-        theme: {
-          color: "#000000",
-        },
-      };
+      const { error } = await stripe.redirectToCheckout({
+        sessionId: data.sessionId,
+      });
 
-      const razorpay = new (window as any).Razorpay(options);
-      razorpay.open();
+      if (error) {
+        toast({
+          title: "Stripe Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       toast({
         title: "Payment Error",
@@ -86,17 +67,17 @@ export function usePayment() {
 }
 
 // Helper function to load Razorpay SDK
-function loadRazorpayScript(): Promise<void> {
-  return new Promise((resolve) => {
-    if (document.getElementById("razorpay-sdk")) {
-      resolve();
-      return;
-    }
-    const script = document.createElement("script");
-    script.id = "razorpay-sdk";
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.async = true;
-    script.onload = () => resolve();
-    document.body.appendChild(script);
-  });
-}
+// function loadRazorpayScript(): Promise<void> {
+//   return new Promise((resolve) => {
+//     if (document.getElementById("razorpay-sdk")) {
+//       resolve();
+//       return;
+//     }
+//     const script = document.createElement("script");
+//     script.id = "razorpay-sdk";
+//     script.src = "https://checkout.razorpay.com/v1/checkout.js";
+//     script.async = true;
+//     script.onload = () => resolve();
+//     document.body.appendChild(script);
+//   });
+// }

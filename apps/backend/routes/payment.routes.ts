@@ -29,6 +29,7 @@ router.post(
 
       console.log("Payment request received:", {
         userId,
+        userEmail,
         plan,
         isAnnual,
         method,
@@ -52,6 +53,7 @@ router.post(
       }
 
       if (method === "stripe") {
+        console.log("Start Creating Stripe session...");
         try {
           const session = await createStripeSession(
             userId,
@@ -378,7 +380,8 @@ router.post(
     try {
       if (!sig) throw new Error("No Stripe signature found");
 
-      const event = stripe.webhooks.constructEvent(
+      // 将 constructEvent 改为 constructEventAsync
+      const event = await stripe.webhooks.constructEventAsync(
         req.body,
         sig,
         process.env.STRIPE_WEBHOOK_SECRET!
@@ -391,6 +394,7 @@ router.post(
           const session = event.data.object as Stripe.Checkout.Session;
           const userId = session.metadata?.userId;
           const plan = session.metadata?.plan as PlanType;
+          const paymentIntentId = session.payment_intent as string;
 
           if (!userId || !plan) {
             throw new Error("Missing metadata in session");
@@ -400,12 +404,25 @@ router.post(
             userId,
             plan,
             sessionId: session.id,
+            paymentIntentId,
+          });
+
+          // 更新交易记录的paymentId
+          await prismaClient.transaction.updateMany({
+            where: { 
+              orderId: session.id,
+              status: "PENDING"
+            },
+            data: { 
+              paymentId: paymentIntentId,
+              status: "SUCCESS" 
+            }
           });
 
           await createSubscriptionRecord(
             userId,
             plan,
-            session.payment_intent as string,
+            paymentIntentId,
             session.id
           );
 

@@ -31,8 +31,8 @@ const razorpay = new Razorpay({
 
 // Define plan prices (in rupees)
 export const PLAN_PRICES = {
-  basic: 4000, 
-  premium: 8000, 
+  basic: 5000, 
+  premium: 10000, 
 } as const;
 
 // Define credit amounts per plan
@@ -82,7 +82,7 @@ export async function createStripeSession(
     }
 
     const price = PLAN_PRICES[plan];
-
+    console.log("Creating Stripe session...");
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
@@ -107,12 +107,14 @@ export async function createStripeSession(
         plan,
       },
     });
-
+    console.log("Stripe session created:", session);
+    
+    // 使用临时的paymentId，后续在webhook中更新
     await createTransactionRecord(
       userId,
       price,
       "usd",
-      session.payment_intent as string,
+      `pending_${session.id}`, // 使用临时的paymentId
       session.id,
       plan,
       "PENDING"
@@ -197,13 +199,24 @@ export async function verifyStripePayment(sessionId: string) {
     throw new Error("Stripe is not configured");
   }
 
-  const session = await stripe.checkout.sessions.retrieve(sessionId);
+  // 使用expand参数获取完整的payment_intent信息
+  const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    expand: ['payment_intent']
+  });
+  
   const { userId, plan } = session.metadata as {
     userId: string;
     plan: PlanType;
   };
 
-  // Find existing pending transaction
+  // 获取真正的payment_intent ID
+  const paymentIntentId = session.payment_intent 
+    ? typeof session.payment_intent === 'string' 
+      ? session.payment_intent 
+      : session.payment_intent.id
+    : null;
+
+  // 查找现有的待处理交易
   const existingTransaction = await prismaClient.transaction.findFirst({
     where: {
       orderId: session.id,
@@ -223,6 +236,7 @@ export async function verifyStripePayment(sessionId: string) {
     },
     data: {
       status: session.payment_status === "paid" ? "SUCCESS" : "FAILED",
+      paymentId: paymentIntentId || existingTransaction.paymentId, // 更新为真正的payment_intent ID
     },
   });
 

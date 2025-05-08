@@ -94,3 +94,5 @@ router.post("/clerk", async (req, res) => {
   res.status(200).json({ success: true, message: "Webhook received" });
   return;
 });
+
+// TODO : Add webhook for Stripe
