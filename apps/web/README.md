@@ -18,7 +18,7 @@ The Next.js frontend application for PhotoAI - an AI-powered image generation pl
 - Tailwind CSS
 - Shadcn/UI
 - Clerk Authentication
-- Stripe/Razorpay Payments
+- Stripe Payments
 
 ## Getting Started
 

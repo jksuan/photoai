@@ -1,35 +1,22 @@
 import Stripe from "stripe";
-import Razorpay from "razorpay";
 import { prismaClient } from "db";
-import crypto from "crypto";
 import { PlanType } from "@prisma/client";
 
 // Validate environment variables
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID;
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET;
 
 if (!STRIPE_SECRET_KEY) {
   console.error("Missing STRIPE_SECRET_KEY");
 }
 
-if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
-  console.error("Missing Razorpay credentials");
-}
-
-// Initialize payment providers
+// Initialize Stripe
 const stripe = STRIPE_SECRET_KEY
   ? new Stripe(STRIPE_SECRET_KEY, {
       apiVersion: "2025-01-27.acacia",
     })
   : null;
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
-
-// Define plan prices (in rupees)
+// Define plan prices (单位：分)
 export const PLAN_PRICES = {
   basic: 5000, 
   premium: 10000, 
@@ -61,7 +48,6 @@ export async function createTransactionRecord(
           orderId,
           plan,
           status,
-          
         },
       })
     );
@@ -114,7 +100,7 @@ export async function createStripeSession(
       userId,
       price,
       "usd",
-      `pending_${session.id}`, // 使用临时的paymentId
+      `pending_${session.id}`,
       session.id,
       plan,
       "PENDING"
@@ -132,66 +118,6 @@ export async function getStripeSession(sessionId: string) {
     throw new Error("Stripe is not configured");
   }
   return await stripe.checkout.sessions.retrieve(sessionId);
-}
-
-export async function createRazorpayOrder(
-  userId: string,
-  plan: keyof typeof PLAN_PRICES
-) {
-  try {
-    const amount = PLAN_PRICES[plan];
-    const amountInPaise = amount * 100;
-
-    const orderData = {
-      amount: amountInPaise,
-      currency: "INR",
-      receipt: `rcpt_${Date.now()}`,
-      notes: {
-        userId,
-        plan,
-      },
-    };
-
-    const order = await new Promise((resolve, reject) => {
-      razorpay.orders.create(orderData, (err: any, result: any) => {
-        if (err) reject(err);
-        resolve(result);
-      });
-    });
-
-    await createTransactionRecord(
-      userId,
-      amount,
-      "INR",
-      "",
-      (order as any).id,
-      plan,
-      "PENDING"
-    );
-
-    return {
-      key: process.env.RAZORPAY_KEY_ID,
-      amount: amountInPaise,
-      currency: "INR",
-      name: "PhotoAI",
-      description: `${plan.toUpperCase()} Plan - ${CREDITS_PER_PLAN[plan]} Credits`,
-      order_id: (order as any).id,
-      prefill: {
-        name: "",
-        email: "",
-      },
-      notes: {
-        userId,
-        plan,
-      },
-      theme: {
-        color: "#000000",
-      },
-    };
-  } catch (error) {
-    console.error("Razorpay Error:", error);
-    throw error;
-  }
 }
 
 export async function verifyStripePayment(sessionId: string) {
@@ -236,74 +162,12 @@ export async function verifyStripePayment(sessionId: string) {
     },
     data: {
       status: session.payment_status === "paid" ? "SUCCESS" : "FAILED",
-      paymentId: paymentIntentId || existingTransaction.paymentId, // 更新为真正的payment_intent ID
+      paymentId: paymentIntentId || existingTransaction.paymentId,
     },
   });
 
   return session.payment_status === "paid";
 }
-
-export const verifyRazorpaySignature = async ({
-  paymentId,
-  orderId,
-  signature,
-  userId,
-  plan,
-}: {
-  paymentId: string;
-  orderId: string;
-  signature: string;
-  userId: string;
-  plan: PlanType;
-}) => {
-  try {
-    if (!RAZORPAY_KEY_SECRET) {
-      throw new Error("Razorpay secret key not configured");
-    }
-
-    const body = orderId + "|" + paymentId;
-    const expectedSignature = crypto
-      .createHmac("sha256", RAZORPAY_KEY_SECRET)
-      .update(body.toString())
-      .digest("hex");
-
-    const isValid = expectedSignature === signature;
-    console.log("Signature verification:", { isValid, orderId, paymentId });
-
-    const order = await razorpay.orders.fetch(orderId);
-    const amount = order.amount;
-    const currency = order.currency;
-
-    // Find existing pending transaction
-    const existingTransaction = await prismaClient.transaction.findFirst({
-      where: {
-        orderId: orderId,
-        userId: userId,
-        status: "PENDING",
-      },
-    });
-
-    if (!existingTransaction) {
-      throw new Error("No pending transaction found for this order");
-    }
-
-    // Update the transaction status
-    await prismaClient.transaction.update({
-      where: {
-        id: existingTransaction.id,
-      },
-      data: {
-        paymentId,
-        status: isValid ? "SUCCESS" : "FAILED",
-      },
-    });
-
-    return isValid;
-  } catch (error) {
-    console.error("Signature verification error:", error);
-    throw error;
-  }
-};
 
 // Add retry logic for database operations
 async function withRetry<T>(
@@ -404,8 +268,6 @@ export async function createSubscriptionRecord(
 
 export const PaymentService = {
   createStripeSession,
-  createRazorpayOrder,
-  verifyRazorpaySignature,
   getStripeSession,
   createSubscriptionRecord,
   addCreditsForPlan,

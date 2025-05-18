@@ -7,7 +7,7 @@ The Node.js backend service for PhotoAI - an AI-powered image generation platfor
 - AI Image Generation with FalAI
 - Model Training Integration
 - S3 Image Storage
-- Payment Processing (Stripe & Razorpay)
+- Payment Processing (Stripe)
 - User Credit Management
 - Clerk Authentication
 - Webhook Handlers
@@ -19,7 +19,7 @@ The Node.js backend service for PhotoAI - an AI-powered image generation platfor
 - Prisma ORM
 - FalAI Client
 - S3 Storage
-- Stripe/Razorpay Integration
+- Stripe Integration
 - Clerk Authentication
 
 ## Environment Variables
@@ -44,8 +44,6 @@ SIGNING_SECRET=your_clerk_webhook_signing_secret
 # Payments
 STRIPE_SECRET_KEY=your_stripe_secret_key
 STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
-RAZORPAY_KEY_ID=your_razorpay_key_id
-RAZORPAY_KEY_SECRET=your_razorpay_secret_key
 
 # URLs
 WEBHOOK_BASE_URL=your_webhook_base_url
@@ -88,7 +86,6 @@ The server will be available at `http://localhost:8080`.
 ### Payments
 
 - `POST /payment/create` - Create payment session
-- `POST /payment/razorpay/verify` - Verify Razorpay payment
 - `GET /payment/subscription/:userId` - Get user subscription
 - `GET /payment/credits/:userId` - Get user credits
 - `POST /payment/webhook` - Payment webhook handler

@@ -13,7 +13,7 @@ import {
   Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 export function PaymentSuccessContent() {
   const [verifying, setVerifying] = useState(true);
@@ -27,12 +27,9 @@ export function PaymentSuccessContent() {
     const verifyPayment = async () => {
       try {
         const sessionId = searchParams.get("session_id");
-        const paymentId = searchParams.get("razorpay_payment_id");
-        const orderId = searchParams.get("razorpay_order_id");
-        const signature = searchParams.get("razorpay_signature");
 
-        // If no payment parameters, assume direct navigation after successful payment
-        if (!sessionId && !paymentId) {
+        // 如果没有 sessionId，直接视为支付成功（兼容直接跳转）
+        if (!sessionId) {
           setVerified(true);
           setVerifying(false);
           return;
@@ -43,50 +40,22 @@ export function PaymentSuccessContent() {
           throw new Error("Not authenticated");
         }
 
-        // Handle Razorpay verification
-        if (paymentId && orderId && signature) {
-          const response = await fetch(
-            `${BACKEND_URL}/payment/razorpay/verify`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({
-                razorpay_payment_id: paymentId,
-                razorpay_order_id: orderId,
-                razorpay_signature: signature,
-              }),
-            }
-          );
+        // Stripe 支付验证
+        const response = await fetch(`${BACKEND_URL}/payment/verify`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ sessionId }),
+        });
 
-          const data = await response.json();
+        const data = await response.json();
 
-          if (response.ok && data.success) {
-            setVerified(true);
-          } else {
-            router.push("/payment/cancel");
-          }
-        }
-        // Handle Stripe verification
-        else if (sessionId) {
-          const response = await fetch(`${BACKEND_URL}/payment/verify`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({ sessionId }),
-          });
-
-          const data = await response.json();
-
-          if (response.ok && data.success) {
-            setVerified(true);
-          } else {
-            router.push("/payment/cancel");
-          }
+        if (response.ok && data.success) {
+          setVerified(true);
+        } else {
+          router.push("/payment/cancel");
         }
       } catch (error) {
         console.error("Payment verification error:", error);
