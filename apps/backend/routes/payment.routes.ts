@@ -14,6 +14,7 @@ import {
 } from "../services/payment";
 
 const router = express.Router();
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: "2025-01-27.acacia",
 });
@@ -27,15 +28,15 @@ router.post(
       const userId = req.userId!;
       const userEmail = (req as any).user?.email;
 
-      console.log("Payment request received:", {
-        userId,
-        userEmail,
-        plan,
-        isAnnual,
-        method,
-        headers: req.headers,
-        body: req.body,
-      });
+      // console.log("Payment request received:", {
+      //   userId,
+      //   userEmail,
+      //   plan,
+      //   isAnnual,
+      //   method,
+      //   headers: req.headers,
+      //   body: req.body,
+      // });
 
       if (!userId) {
         res.status(401).json({ message: "Unauthorized" });
@@ -378,11 +379,13 @@ router.post(
     const sig = req.headers["stripe-signature"];
 
     try {
-      if (!sig) throw new Error("No Stripe signature found");
+      if (!sig) {
+        throw new Error("No Stripe signature found");
+      }      
 
-      // 将 constructEvent 改为 constructEventAsync
+      // 使用 constructEventAsync 处理事件
       const event = await stripe.webhooks.constructEventAsync(
-        req.body,
+        (req as express.Request).rawBody!,
         sig,
         process.env.STRIPE_WEBHOOK_SECRET!
       );
@@ -408,37 +411,47 @@ router.post(
           });
 
           // 更新交易记录的paymentId
-          await prismaClient.transaction.updateMany({
-            where: { 
-              orderId: session.id,
-              status: "PENDING"
-            },
-            data: { 
-              paymentId: paymentIntentId,
-              status: "SUCCESS" 
-            }
-          });
+          // await prismaClient.transaction.updateMany({
+          //   where: { 
+          //     orderId: session.id,
+          //     status: "PENDING"
+          //   },
+          //   data: { 
+          //     paymentId: paymentIntentId,
+          //     status: "SUCCESS" 
+          //   }
+          // });
 
-          await createSubscriptionRecord(
-            userId,
-            plan,
-            paymentIntentId,
-            session.id
-          );
+          // await createSubscriptionRecord(
+          //   userId,
+          //   plan,
+          //   paymentIntentId,
+          //   session.id
+          // );
+
+          // const paymentVerified = await verifyStripePayment(session.id);
+          // if (!paymentVerified) {
+          //   res.status(400).json({
+          //     success: false,
+          //     message: "Payment verification failed",
+          //   });
+          //   return;
+          // }
+
+          const { subscription, userCredit } = await createSubscriptionRecord(userId, plan, paymentIntentId, session.id);
 
           console.log("Successfully processed payment and added credits");
           break;
         }
       }
-
-      res.json({ received: true });
+      // 不要返回 res 对象
+      res.json({ received: true });    
     } catch (error) {
       console.error("Webhook error:", error);
-      res
-        .status(400)
-        .send(
-          `Webhook Error: ${error instanceof Error ? error.message : "Unknown error"}`
-        );
+      // 不要返回 res 对象
+      res.status(400).send(
+        `Webhook Error: ${error instanceof Error ? error.message : "Unknown error"}`
+      );    
     }
   }
 );

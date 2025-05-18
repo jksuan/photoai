@@ -356,16 +356,17 @@ export async function createSubscriptionRecord(
   isAnnual: boolean = false
 ) {
   try {
+    console.log("Creating subscription:", {
+      userId,
+      plan,
+      paymentId,
+      orderId,
+      isAnnual,
+    });
+
     return await withRetry(() =>
       prismaClient.$transaction(async (prisma) => {
-        console.log("Creating subscription:", {
-          userId,
-          plan,
-          paymentId,
-          orderId,
-          isAnnual,
-        });
-
+        // 1. 创建订阅记录
         const subscription = await prisma.subscription.create({
           data: {
             userId,
@@ -375,8 +376,24 @@ export async function createSubscriptionRecord(
           },
         });
 
-        await addCreditsForPlan(userId, plan);
-        return subscription;
+        // 2. 在同一事务中添加积分
+        const credits = CREDITS_PER_PLAN[plan];
+        console.log("Adding credits within transaction:", { userId, plan, credits });
+
+        const userCredit = await prisma.userCredit.upsert({
+          where: { userId },
+          update: { amount: { increment: credits } },
+          create: {
+            userId,
+            amount: credits,
+          },
+        });
+
+        // 3. 返回包含订阅和积分信息的对象
+        return {
+          subscription,
+          userCredit
+        };
       })
     );
   } catch (error) {

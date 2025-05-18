@@ -25,6 +25,7 @@ const PORT = process.env.PORT || 8080;
 const falAiModel = new FalAIModel();
 
 const app = express();
+
 app.use(
   cors({
     origin: ["https://photoai-web.08612345.xyz", "http://localhost:3000"],
@@ -33,7 +34,20 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-app.use(express.json());
+
+// 添加 urlencoded 中间件
+app.use(express.urlencoded({ extended: true }));
+
+// 在其他中间件之前添加
+app.use(
+  express.json({
+    verify: function (req, res, buf) {
+      if ((req as express.Request).originalUrl.startsWith('/payment/webhook')) {
+        (req as express.Request).rawBody = buf.toString();
+      }
+    },
+  })
+);
 
 app.get("/pre-signed-url", async (req, res) => {
   const key = `models/${Date.now()}_${Math.random()}.zip`;
