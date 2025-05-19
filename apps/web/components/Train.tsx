@@ -22,7 +22,7 @@ import { Switch } from "@/components/ui/switch";
 import { UploadModal } from "@/components/ui/upload";
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { BACKEND_URL, CLOUDFLARE_URL } from "@/app/config";
+import { BACKEND_URL, S3_URL } from "@/app/config";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import toast from "react-hot-toast";
@@ -215,7 +215,7 @@ export function Train() {
         },
       });
 
-      const fullZipUrl = `${CLOUDFLARE_URL}/${key}`;
+      const fullZipUrl = `${S3_URL}/${key}`;
       setZipUrl(fullZipUrl);
       setZipKey(key);
 

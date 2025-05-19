@@ -51,12 +51,13 @@ app.use(
 
 app.get("/pre-signed-url", async (req, res) => {
   const key = `models/${Date.now()}_${Math.random()}.zip`;
+  console.log("Generating pre-signed URL for key:", key);
   const url = S3Client.presign(key, {
     method: "PUT",
     accessKeyId: process.env.S3_ACCESS_KEY,
-    secretAccessKey: process.env.S3_SECRET_KEY,
-    endpoint: process.env.ENDPOINT,
+    secretAccessKey: process.env.S3_SECRET_KEY,    
     bucket: process.env.BUCKET_NAME,
+    region: process.env.REGION,
     expiresIn: 60 * 5,
     type: "application/zip",
   });
